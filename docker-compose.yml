@@ -67,8 +67,6 @@ services:
   tier-two-nginx:
     <<: *nginx
     container_name: tier-two-nginx
-    ports:
-      - 80:80
     volumes:
       - *nginx_base_volume
       - *nginx_common_volume
@@ -82,6 +80,25 @@ services:
     network_mode: "service:tier-two-nginx"
     depends_on: 
       - tier-two-nginx
+  tier-three-nginx:
+    <<: *nginx
+    container_name: tier-three-nginx
+    volumes:
+      - *nginx_base_volume
+      - *nginx_common_volume
+      - type: bind
+        source: ./nginx/tier-three
+        target: /etc/nginx/single
+        read_only: true
+    ports:
+        - 80:80
+  tier-three-metric-exporter:
+    <<: *nginx-metric-exporter
+    container_name: tier-three-metric-exporter
+    network_mode: "service:tier-three-nginx"
+    depends_on: 
+      - tier-three-nginx
+
 volumes:
   prom_data:
 
