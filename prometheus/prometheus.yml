@@ -26,7 +26,16 @@ scrape_configs:
   scrape_timeout: 3s
   metrics_path: /metrics
   scheme: http
-  static_configs:
-  - targets:
-    - tier-one-nginx:9913
-    - tier-two-nginx:9913
+  # static_configs:
+  # - targets:
+  #   - tier-one-nginx:9913
+  #   - tier-two-nginx:9913
+  #   - tier-three-nginx:9913
+  dns_sd_configs:
+    - names:
+        - tier-one-nginx
+        - tier-two-nginx
+        - tier-three-nginx
+      type: A
+      port: 9913
+      refresh_interval: 1s

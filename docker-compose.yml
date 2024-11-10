@@ -4,14 +4,17 @@ services:
     container_name: prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
-      # - '--log.level=debug'
-      - '--log.level=error'
+      - '--log.level=debug'
+      # - '--log.level=error'
     restart: unless-stopped
     volumes:
       - ./prometheus:/etc/prometheus
       - prom_data:/prometheus
     networks:
       - CDN
+    depends_on:
+      tier-three-nginx:
+          condition: service_healthy
   grafana:
     image: grafana/grafana
     container_name: grafana
@@ -30,9 +33,11 @@ services:
       - CDN
 
   tier-one-nginx: &nginx
-    container_name: tier-one-nginx
+    deploy:
+      replicas: 2
     build:
-      dockerfile: ./nginx/Dockerfile
+      context: ./nginx
+      dockerfile: Dockerfile
     volumes:
       - &nginx_base_volume
         type: bind 
@@ -48,25 +53,15 @@ services:
         source: ./nginx/tier-one
         target: /etc/nginx/single
         read_only: true
-    # ports:
-    #   - 9913:9913
-    #   - 8080:8080
+    healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:82"]
+        interval: 3s
+        timeout: 1s
+        retries: 5
     networks:
       - CDN
-  tier-one-metric-exporter: &nginx-metric-exporter
-    container_name: tier-one-metric-exporter
-    build:
-      dockerfile: ./nginx-vts-exporter/Dockerfile
-    depends_on: 
-      - prometheus
-    entrypoint: 
-      - "/usr/local/bin/nginx-vtx-exporter"
-      - "-nginx.scrape_uri=http://127.0.0.1:82/status/format/json"
-    network_mode: "service:tier-one-nginx"
-
   tier-two-nginx:
     <<: *nginx
-    container_name: tier-two-nginx
     volumes:
       - *nginx_base_volume
       - *nginx_common_volume
@@ -74,30 +69,25 @@ services:
         source: ./nginx/tier-two
         target: /etc/nginx/single
         read_only: true
-  tier-two-metric-exporter:
-    <<: *nginx-metric-exporter
-    container_name: tier-two-metric-exporter
-    network_mode: "service:tier-two-nginx"
-    depends_on: 
-      - tier-two-nginx
+    depends_on:
+      tier-one-nginx:
+          condition: service_healthy
   tier-three-nginx:
     <<: *nginx
-    container_name: tier-three-nginx
     volumes:
       - *nginx_base_volume
       - *nginx_common_volume
       - type: bind
         source: ./nginx/tier-three
         target: /etc/nginx/single
-        read_only: true
+        read_only: true 
     ports:
         - 80:80
-  tier-three-metric-exporter:
-    <<: *nginx-metric-exporter
-    container_name: tier-three-metric-exporter
-    network_mode: "service:tier-three-nginx"
-    depends_on: 
-      - tier-three-nginx
+    deploy:
+      replicas: 1
+    depends_on:
+      tier-two-nginx:
+          condition: service_healthy
 
 volumes:
   prom_data:
