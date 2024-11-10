@@ -1,0 +1,79 @@
+services:
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--log.level=error'
+    ports:
+      - 9090:9090
+    restart: unless-stopped
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prom_data:/prometheus
+    networks:
+      - Mynetwork
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=foo
+      - GF_SECURITY_ADMIN_PASSWORD=bar
+      - GF_LOG_LEVEL=error
+    volumes:
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/dashboard.yaml:/etc/grafana/provisioning/dashboards/main.yaml
+    networks:
+      - Mynetwork
+  tier-one-nginx: &nginx
+    build:
+      dockerfile: ./nginx/Dockerfile
+    volumes:
+      - type: bind
+        source: ./nginx/nginx.conf
+        target: /etc/nginx/nginx.conf
+        read_only: true
+      - type: bind
+        source: ./nginx/common
+        target: /etc/nginx/common
+        read_only: true
+      - type: bind
+        source: ./nginx/tier-one
+        target: /etc/nginx/single
+        read_only: true
+    ports:
+      - 80:80
+    networks:
+      - Mynetwork
+  tier-one-metric-exporter:
+    build:
+      dockerfile: ./nginx-vts-exporter/Dockerfile
+    depends_on: 
+      - prometheus
+    entrypoint: 
+      - "/usr/local/bin/nginx-vtx-exporter"
+      - "-nginx.scrape_uri=http://127.0.0.1:19913/status/format/json"
+    network_mode: "service:tier-one-nginx"
+  tier-two:
+    <<: *nginx
+    ports:
+      - 8080:8080
+
+    depends_on: 
+      - tier-one-nginx
+volumes:
+  prom_data:
+
+# 172.XX overlaps with my network
+networks:
+  Mynetwork:
+      driver: bridge
+      ipam:
+          driver: default
+          config:
+              - subnet: "10.90.0.0/24"
+                gateway: "10.90.0.1"
