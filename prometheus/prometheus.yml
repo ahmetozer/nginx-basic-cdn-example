@@ -22,10 +22,11 @@ scrape_configs:
 
 - job_name: nginx-prometheus-exporter
   honor_timestamps: true
-  scrape_interval: 15s
-  scrape_timeout: 10s
+  scrape_interval: 5s
+  scrape_timeout: 3s
   metrics_path: /metrics
   scheme: http
   static_configs:
   - targets:
     - tier-one-nginx:9913
+    - tier-two-nginx:9913

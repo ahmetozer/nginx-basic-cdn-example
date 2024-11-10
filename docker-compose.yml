@@ -4,15 +4,14 @@ services:
     container_name: prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
+      # - '--log.level=debug'
       - '--log.level=error'
-    ports:
-      - 9090:9090
     restart: unless-stopped
     volumes:
       - ./prometheus:/etc/prometheus
       - prom_data:/prometheus
     networks:
-      - Mynetwork
+      - CDN
   grafana:
     image: grafana/grafana
     container_name: grafana
@@ -28,16 +27,20 @@ services:
       - ./grafana/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/dashboard.yaml:/etc/grafana/provisioning/dashboards/main.yaml
     networks:
-      - Mynetwork
+      - CDN
+
   tier-one-nginx: &nginx
+    container_name: tier-one-nginx
     build:
       dockerfile: ./nginx/Dockerfile
     volumes:
-      - type: bind
+      - &nginx_base_volume
+        type: bind 
         source: ./nginx/nginx.conf
         target: /etc/nginx/nginx.conf
         read_only: true
-      - type: bind
+      - &nginx_common_volume
+        type: bind
         source: ./nginx/common
         target: /etc/nginx/common
         read_only: true
@@ -45,35 +48,49 @@ services:
         source: ./nginx/tier-one
         target: /etc/nginx/single
         read_only: true
-    ports:
-      - 80:80
+    # ports:
+    #   - 9913:9913
+    #   - 8080:8080
     networks:
-      - Mynetwork
-  tier-one-metric-exporter:
+      - CDN
+  tier-one-metric-exporter: &nginx-metric-exporter
+    container_name: tier-one-metric-exporter
     build:
       dockerfile: ./nginx-vts-exporter/Dockerfile
     depends_on: 
       - prometheus
     entrypoint: 
       - "/usr/local/bin/nginx-vtx-exporter"
-      - "-nginx.scrape_uri=http://127.0.0.1:19913/status/format/json"
+      - "-nginx.scrape_uri=http://127.0.0.1:82/status/format/json"
     network_mode: "service:tier-one-nginx"
-  tier-two:
-    <<: *nginx
-    ports:
-      - 8080:8080
 
+  tier-two-nginx:
+    <<: *nginx
+    container_name: tier-two-nginx
+    ports:
+      - 80:80
+    volumes:
+      - *nginx_base_volume
+      - *nginx_common_volume
+      - type: bind
+        source: ./nginx/tier-two
+        target: /etc/nginx/single
+        read_only: true
+  tier-two-metric-exporter:
+    <<: *nginx-metric-exporter
+    container_name: tier-two-metric-exporter
+    network_mode: "service:tier-two-nginx"
     depends_on: 
-      - tier-one-nginx
+      - tier-two-nginx
 volumes:
   prom_data:
 
 # 172.XX overlaps with my network
 networks:
-  Mynetwork:
+  CDN:
       driver: bridge
       ipam:
           driver: default
           config:
-              - subnet: "10.90.0.0/24"
-                gateway: "10.90.0.1"
+              - subnet: "10.91.0.0/24"
+                gateway: "10.91.0.1"
