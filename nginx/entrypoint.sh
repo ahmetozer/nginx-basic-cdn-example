@@ -1,5 +1,6 @@
 #!/bin/sh
 
+rm -rf /var/run/nginx_image_resize.sock
 # NGINX
 nginx -g  "daemon off;" &
 NGINX_PID=$?
