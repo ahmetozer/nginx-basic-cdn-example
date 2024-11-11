@@ -1,11 +1,46 @@
 services:
+  dnsmasq:
+    build: 
+      context: ./dnsmasq
+      dockerfile: Dockerfile
+    cap_add:
+      - NET_ADMIN
+    command: 
+      - --keep-in-foreground
+      - --min-cache-ttl=120
+      - --port=8053
+      - --strict-order
+      - --dns-loop-detect
+      - --no-round-robin # Important for consistent DNS responses and consistent load balancing at NGINX because of the Service Discovery
+    networks:
+      CDN:
+        ipv4_address: 10.91.0.53
+  # k6:
+  #   image: ghcr.io/grafana/k6:master
+  #   ports:
+  #     - "6565:6565"
+  #   environment:
+  #     - K6_OUT=influxdb=http://
+  #   command: 
+  #   - 'run' 
+  #   - '/k6/scenario_01.js'
+  #   volumes:
+  #     - type: bind 
+  #       source: ./k6
+  #       target: /k6
+  #       read_only: true
+  #   depends_on:
+  #     tier-three-nginx:
+  #         condition: service_healthy
+  #   networks:
+  #     - CDN
   prometheus:
     image: prom/prometheus
     container_name: prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--log.level=debug'
-      # - '--log.level=error'
+      # - '--log.level=debug'
+      - '--log.level=error'
     restart: unless-stopped
     volumes:
       - ./prometheus:/etc/prometheus
