@@ -1,0 +1,98 @@
+apiVersion: 1
+groups:
+    - orgId: 1
+      name: CDN
+      folder: Alerts
+      interval: 1m
+      rules:
+        - uid: ae3ngfrvh7x1cc
+          title: Cache Ratio
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 10800
+                to: 0
+              datasourceUid: prometheus
+              model:
+                adhocFilters: []
+                datasource:
+                    type: prometheus
+                    uid: prometheus
+                editorMode: code
+                expr: |
+                    (
+                      sum(irate(nginx_server_cache{instance=~"(10\\.91\\.0\\.2:9913|10\\.91\\.0\\.3:9913|10\\.91\\.0\\.4:9913|10\\.91\\.0\\.5:9913|10\\.91\\.0\\.6:9913|10\\.91\\.0\\.7:9913)", host=~"^(\\*|_|tierone|tierthree|tiertwo)$", status="hit"}[5m]))
+                      /
+                      sum(irate(nginx_server_cache{instance=~"(10\\.91\\.0\\.2:9913|10\\.91\\.0\\.3:9913|10\\.91\\.0\\.4:9913|10\\.91\\.0\\.5:9913|10\\.91\\.0\\.6:9913|10\\.91\\.0\\.7:9913)", host=~"^(\\*|_|tierone|tierthree|tiertwo)$", status=~"hit|miss"}[5m]))
+                    ) * 100
+                interval: ""
+                intervalMs: 15000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: true
+                refId: A
+            - refId: B
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params: []
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - B
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: mean
+                refId: B
+                settings:
+                    mode: dropNN
+                type: reduce
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 80
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          dashboardUid: fe3kasya6pds0a
+          panelId: 8
+          noDataState: NoData
+          execErrState: Error
+          for: 1m
+          annotations:
+            __dashboardUid__: fe3kasya6pds0a
+            __panelId__: "8"
+            runbook_url: http://tier-three-nginx/low-cache-ratio-alert-triggered
+          isPaused: false
+          notification_settings:
+            receiver: grafana-default-email

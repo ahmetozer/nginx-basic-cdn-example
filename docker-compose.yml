@@ -63,6 +63,7 @@ services:
     volumes:
       - ./grafana/dashboards:/var/lib/grafana/dashboards
       - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/alerting:/etc/grafana/provisioning/alerting
       - ./grafana/dashboard.yaml:/etc/grafana/provisioning/dashboards/main.yaml
     networks:
       - CDN
