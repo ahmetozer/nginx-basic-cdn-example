@@ -1,11 +1,4 @@
-# FROM ubuntu:focal
-
-# ENV DEBIAN_FRONTEND=noninteractive
-# ARG TIME_ZONE
-# RUN apt update && apt install -yq nginx-extras prometheus-nginx-vts-exporter 
-# # USER www-data nginx conf has "user www-data;" configuration already
-# ENTRYPOINT [ "/usr/sbin/nginx", "-g", "daemon off;" ]
-FROM alpine
+FROM alpine:3.20
 
 COPY entrypoint.sh /entrypoint.sh
 
