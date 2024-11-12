@@ -17,30 +17,31 @@ Aims of this project:
 
 This system consists of 3 Levels of deployments which each level has main different responsibilities.
 
-Nginx:
-Used for security, image resizing, and caching the content.
-    - Tier1:
-        - Caching pure backend content
-        - Source of truth for image revalidation and Purge
-    - Tier2:
-        - Resize image based on request
-        - Cache repetitive resizing requests
-    - Tier3:
-        - Rate Limiting request
-        - Secure URL verification
-        - Cache high demand only contents
-DNSMasq:
-    Creating consistent DNS response across the cluster for consistent load balancing at nginx upstream servers with service discovery.
-Grafana:
-    Dashboard and alerting for Nginx
-Prometheus:
-    Discovering Nginx instances and collecting metrics
+- Nginx: Used for security, image resizing, and caching the content.
+  - Tier1:
+    - Caching pure backend content
+    - Source of truth for image revalidation and Purge
+  - Tier2:
+    - Resize image based on request
+    - Cache repetitive resizing requests
+  - Tier3:
+    - Rate Limiting request
+    - Secure URL verification
+    - Cache high demand only contents
+- DNSMasq:
+  - Creating consistent DNS response across the cluster for consistent load balancing at nginx upstream servers with service discovery.
+- Grafana:
+  - Dashboard
+  - Alerting
+- Prometheus:
+  - Discovering Nginx instances
+  - Collecting and querying metrics
 
 ## Design Considerations
 
 ### Image Resizing
 
-Image resizing is done at Tier 2 with use of the image_filter module at nginx. Not all requests are passed to this resing functionality, only the resize path is forwarded with this function help of Nginx variables at the upstream configuration.
+Image resizing is done at Tier 2 with use of the image_filter module at nginx. Not all requests are passed to this resing functionality, only the resize path is forwarded with this function help of Nginx variables at the upstream configuration.  
 After a couple of requests resize request, it will be cached on disk to prevent CPU consumption.
 
 In this example, images are resized 100x100 which causes low-resolution images.
@@ -75,10 +76,12 @@ Images will have a lower rate limit for demo purposes, at the home page, the fir
 
 ### Consistent Distributed Caching
 
-Many assets are stored in CDN systems. Duplication of those files across distributed clusters will cause high storage usage. If the requests hit a similar caching cluster for the same file, this will improve the HIT ratio of the cluster and reduce storage usage.  
+Many assets are stored in CDN systems. Duplication of those files across distributed clusters will cause high storage usage. If the requests hit a similar caching cluster for the same file, this will improve the HIT ratio of the cluster and reduce storage usage.
+
 To achieve consistency, the system uses path values as hash keys while upstream selection.
 
-Note: In this demo, service discovery is used for automatically scaling requests and cross-cache tiers. By default, DNS responses have round robin which means the order of response changes for each query and this breaks consistency. To prevent this behavior, DNSMasq is used for caching cluster service discovery responses and rr is disabled.
+Note: In this demo, service discovery is used for automatically scaling requests and cross-cache tiers. By default, DNS responses have round robin which means the order of response changes for each query and this breaks consistency.  
+To prevent this behavior, DNSMasq is used for caching cluster service discovery responses and rr is disabled.
 
 ### Cache Purge
 
@@ -94,7 +97,8 @@ Alerting enabled in incase of rate limit is below %80 percent. When the ratio is
 
 ### Fault Tolerance
 
-High availability is achieved by distributed and replicated cluster mechanisms. When the system has a faulty node, nginx upstream will try the next upstream client. This is available for each server entry under the upstream configuration and is not limited to entry. If the server entry host has multiple A or AAAA records, nginx will try those as well.  
+High availability is achieved by distributed and replicated cluster mechanisms. When the system has a faulty node, nginx upstream will try the next upstream client. This is available for each server entry under the upstream configuration and is not limited to entry.  
+If the server entry host has multiple A or AAAA records, nginx will try those as well.  
 
 As a next step, overlay networks or virtual IP addresses can be combined to prevent if multiple events occur at the same time such as an IP address change of one replica and another replica is not available and the DNS cache has not expired yet.
 (Note tier-3 replica set to 1 to assign port 80)
